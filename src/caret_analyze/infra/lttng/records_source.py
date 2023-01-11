@@ -47,8 +47,8 @@ class RecordsSource():
         )
 
     @cached_property
-    def _grouped_callback_start(self) -> Dict[int, RecordsInterface]:
-        records = self._data.callback_start_instances.clone()
+    def _grouped_merged_callback_timing(self) -> Dict[int, RecordsInterface]:
+        records = self._data.merged_callback_timing_instances.clone()
         group: Dict[int, RecordsInterface] = {}
         for k, v in records.groupby([COLUMN_NAME.IS_INTRA_PROCESS]).items():
             assert len(k) == 1
@@ -67,7 +67,7 @@ class RecordsSource():
         - rcl_publish (Optional)
         - dds_write (Optional)
         - dispatch_subscription_callback
-        - callback_start
+        - merged_callback_timing
 
         Returns
         -------
@@ -174,18 +174,18 @@ class RecordsSource():
             COLUMN_NAME.RCLCPP_INTER_PUBLISH_TIMESTAMP
         ])
 
-        callback_start_instances = self.inter_callback_records
+        merged_callback_timing_instances = self.inter_callback_records
         subscription = self._data.dispatch_subscription_callback_instances
 
         subscription = merge_sequential(
             left_records=subscription,
-            right_records=callback_start_instances,
+            right_records=merged_callback_timing_instances,
             left_stamp_key=COLUMN_NAME.DISPATCH_SUBSCRIPTION_CALLBACK_TIMESTAMP,
             right_stamp_key=COLUMN_NAME.CALLBACK_START_TIMESTAMP,
             join_left_key=COLUMN_NAME.CALLBACK_OBJECT,
             join_right_key=COLUMN_NAME.CALLBACK_OBJECT,
             columns=Columns.from_str(
-                subscription.columns + callback_start_instances.columns
+                subscription.columns + merged_callback_timing_instances.columns
             ).column_names,
             how='left',
             progress_label='binding: dispatch_subscription_callback and callback_start',
@@ -220,6 +220,7 @@ class RecordsSource():
                 COLUMN_NAME.MESSAGE,
                 COLUMN_NAME.DDS_BIND_ADDR_TO_STAMP_TIMESTAMP,
                 COLUMN_NAME.DISPATCH_SUBSCRIPTION_CALLBACK_TIMESTAMP,
+                COLUMN_NAME.CALLBACK_END_TIMESTAMP,
             ],
         )
 
@@ -459,12 +460,13 @@ class RecordsSource():
             None,
             [
                 ColumnValue('callback_start_timestamp'),
+                ColumnValue('callback_end_timestamp'),
                 ColumnValue('callback_object'),
                 ColumnValue('is_intra_process'),
             ]
         )
-        if 1 in self._grouped_callback_start:
-            intra_callback_start = self._grouped_callback_start[1].clone()
+        if 1 in self._grouped_merged_callback_timing:
+            intra_callback_start = self._grouped_merged_callback_timing[1].clone()
             intra_proc_subscribe.concat(intra_callback_start)
         return intra_proc_subscribe
 
@@ -474,29 +476,30 @@ class RecordsSource():
             None,
             [
                 ColumnValue('callback_start_timestamp'),
+                ColumnValue('callback_end_timestamp'),
                 ColumnValue('callback_object'),
                 ColumnValue('is_intra_process')
             ]
         )
-        if 0 in self._grouped_callback_start:
-            intra_callback_start = self._grouped_callback_start[0].clone()
+        if 0 in self._grouped_merged_callback_timing:
+            intra_callback_start = self._grouped_merged_callback_timing[0].clone()
             intra_proc_subscribe.concat(intra_callback_start)
         return intra_proc_subscribe
 
     @cached_property
     def subscribe_records(self) -> RecordsInterface:
-        callback_start_instances = self.inter_callback_records
+        merged_callback_timing_instances = self.inter_callback_records
         inter_proc_subscribe = self._data.dispatch_subscription_callback_instances
 
         inter_proc_subscribe = merge_sequential(
             left_records=inter_proc_subscribe,
-            right_records=callback_start_instances,
+            right_records=merged_callback_timing_instances,
             left_stamp_key=COLUMN_NAME.DISPATCH_SUBSCRIPTION_CALLBACK_TIMESTAMP,
             right_stamp_key=COLUMN_NAME.CALLBACK_START_TIMESTAMP,
             join_left_key=COLUMN_NAME.CALLBACK_OBJECT,
             join_right_key=COLUMN_NAME.CALLBACK_OBJECT,
             columns=Columns.from_str(
-                inter_proc_subscribe.columns + callback_start_instances.columns
+                inter_proc_subscribe.columns + merged_callback_timing_instances.columns
             ).column_names,
             how='left',
             progress_label='binding: dispatch_subscription_callback and callback_start',
@@ -517,6 +520,8 @@ class RecordsSource():
             how='outer',
             progress_label='binding intra and inter subscribe'
         )
+
+        subscribe.drop_columns([COLUMN_NAME.CALLBACK_END_TIMESTAMP])
 
         return subscribe
 
@@ -586,11 +591,11 @@ class RecordsSource():
             how='left_use_latest'
         )
 
-        callback_start_instances = self.intra_callback_records
+        merged_callback_timing_instances = self.intra_callback_records
 
         intra_records = merge_sequential(
             left_records=intra_publish_records,
-            right_records=callback_start_instances,
+            right_records=merged_callback_timing_instances,
             left_stamp_key=COLUMN_NAME.DISPATCH_INTRA_PROCESS_SUBSCRIPTION_CALLBACK_TIMESTAMP,
             right_stamp_key=COLUMN_NAME.CALLBACK_START_TIMESTAMP,
             join_left_key=COLUMN_NAME.CALLBACK_OBJECT,
@@ -598,7 +603,7 @@ class RecordsSource():
             columns=Columns.from_str(
                 intra_publish_records.columns +
                 [
-                    COLUMN_NAME.CALLBACK_START_TIMESTAMP, COLUMN_NAME.IS_INTRA_PROCESS,
+                    COLUMN_NAME.CALLBACK_START_TIMESTAMP, COLUMN_NAME.CALLBACK_END_TIMESTAMP, COLUMN_NAME.IS_INTRA_PROCESS,
                 ]
             ).column_names,
             how='left',
@@ -609,7 +614,8 @@ class RecordsSource():
             [
                 COLUMN_NAME.DISPATCH_INTRA_PROCESS_SUBSCRIPTION_CALLBACK_TIMESTAMP,
                 COLUMN_NAME.MESSAGE,
-                COLUMN_NAME.IS_INTRA_PROCESS
+                COLUMN_NAME.IS_INTRA_PROCESS,
+                COLUMN_NAME.CALLBACK_END_TIMESTAMP
             ]
         )
         intra_records.rename_columns(
@@ -638,24 +644,7 @@ class RecordsSource():
             - callback_object
 
         """
-        records: RecordsInterface
-
-        records = merge_sequential(
-            left_records=self._data.callback_start_instances,
-            right_records=self._data.callback_end_instances,
-            left_stamp_key=COLUMN_NAME.CALLBACK_START_TIMESTAMP,
-            right_stamp_key=COLUMN_NAME.CALLBACK_END_TIMESTAMP,
-            join_left_key=COLUMN_NAME.CALLBACK_OBJECT,
-            join_right_key=COLUMN_NAME.CALLBACK_OBJECT,
-            columns=[
-                COLUMN_NAME.CALLBACK_START_TIMESTAMP,
-                COLUMN_NAME.CALLBACK_END_TIMESTAMP,
-                COLUMN_NAME.CALLBACK_OBJECT,
-                COLUMN_NAME.IS_INTRA_PROCESS,
-            ],
-            how='inner',
-            progress_label='binding: callback_start and callback_end'
-        )
+        records = self._data.merged_callback_timing_instances.clone()
 
         records.drop_columns(
             [

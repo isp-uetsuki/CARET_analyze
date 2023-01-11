@@ -211,6 +211,15 @@ class Ros2DataModel():
             ]
         )
 
+        self.merged_callback_timing_instances = RecordsFactory.create_instance(
+            None, [
+                ColumnValue('callback_start_timestamp'),
+                ColumnValue('callback_end_timestamp'),
+                ColumnValue('callback_object'),
+                ColumnValue('is_intra_process'),
+            ]
+        )
+
     def add_context(self, pid, context_handle, timestamp) -> None:
         record = {
             'context_handle': context_handle,
@@ -692,6 +701,17 @@ class Ros2DataModel():
             'clock_offset': clock_offset,
         }
         self._caret_init.append(record)
+
+    def add_merged_callback_timing_instance(
+        self, start_timestamp: int, end_timestamp: int, callback: int, is_intra_process: bool
+    ) -> None:
+        record = {
+                'callback_start_timestamp': start_timestamp,
+                'callback_end_timestamp': end_timestamp,
+                'callback_object': callback,
+                'is_intra_process': is_intra_process,
+            }
+        self.merged_callback_timing_instances.append(record)
 
     def finalize(self) -> None:
         self.contexts = self._contexts.get_finalized('context_handle')

@@ -48,6 +48,7 @@ class TestLttngInfo:
         data.add_executor_static(0, 0, 0, 'executor_type')
         data.add_callback_group(0, 0, 0, 'callback_group_type')
         data.add_callback_group_static_executor(0, 0, 0, 'callback_group_type')
+        data.add_merged_callback_timing_instance(0, 0, 0, True)
         data.callback_group_add_subscription(1, 0, 0)
         data.callback_group_add_service(0, 0, 0)
         data.callback_group_add_client(0, 0, 0)

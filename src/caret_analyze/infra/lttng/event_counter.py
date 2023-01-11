@@ -65,7 +65,8 @@ class EventCounter:
             'ros2_caret:tilde_publish',
             'ros2_caret:sim_time',
             'ros2_caret:on_data_available_data',
-            'ros2_caret:rmw_implementation'
+            'ros2_caret:rmw_implementation',
+            'ros2_caret:merged_callback_timing'
         }
 
         trace_points_added_by_fork_rclcpp = {
@@ -140,6 +141,7 @@ class EventCounter:
             'ros2_caret:sim_time': data.sim_time.to_dataframe(),
             'ros2_caret:on_data_available': data.on_data_available_instances.to_dataframe(),
             'ros2_caret:caret_init': data.caret_init.df,
+            'ros2_caret:merged_callback_timing': data.merged_callback_timing_instances.to_dataframe(),
         }
         #  'ros2_caret:rmw_implementation': ,
 

@@ -177,6 +177,9 @@ class Ros2Handler():
         handler_map['ros2_caret:rcl_lifecycle_state_machine_init'] = \
             self._create_handler(self._handle_rcl_lifecycle_state_machine_init)
 
+        #  Trace points of measurements merged by caret_trace
+        handler_map['ros2_caret:merged_callback_timing'] = self._handle_merged_callback_timing
+
         self._monotonic_to_system_offset: Optional[int] = monotonic_to_system_time_offset
         self._caret_init_recorded: defaultdict[int, bool] = defaultdict(lambda: False)
         self.handler_map = handler_map
@@ -231,6 +234,7 @@ class Ros2Handler():
             'ros2_caret:tilde_publish',
             'ros2_caret:tilde_subscribe_added',
             'ros2_caret:sim_time',
+            'ros2_caret:merged_callback_timing',
         ]
 
         if include_wrapped_tracepoints:
@@ -811,3 +815,18 @@ class Ros2Handler():
         timestamp = get_field(event, '_timestamp')
         sim_time = get_field(event, 'stamp')
         self.data.add_sim_time(timestamp, sim_time)
+
+    def _handle_merged_callback_timing(
+        self,
+        event: Dict,
+    ) -> None:
+        if not self._is_valid_data(event):
+            return
+
+        # Add to dict
+        callback = get_field(event, 'callback')
+        start_timestamp = get_field(event, 'start_timestamp')
+        end_timestamp = get_field(event, '_timestamp')
+        is_intra_process = get_field(event, 'is_intra_process')
+        self.data.add_merged_callback_timing_instance(
+            start_timestamp, end_timestamp, callback, is_intra_process)

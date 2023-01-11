@@ -74,6 +74,7 @@ class TestEventCounter:
         data.add_executor_static(0, 0, 0, '')
         data.add_callback_group(0, 0, 0, '')
         data.add_callback_group_static_executor(0, 0, 0, '')
+        data.add_merged_callback_timing_instance(0, 0, 0, False)
         data.callback_group_add_timer(0, 0, 0)
         data.callback_group_add_subscription(0, 0, 0)
         data.callback_group_add_service(0, 0, 0)
