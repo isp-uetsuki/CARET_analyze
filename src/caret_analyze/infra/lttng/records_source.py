@@ -603,7 +603,9 @@ class RecordsSource():
             columns=Columns.from_str(
                 intra_publish_records.columns +
                 [
-                    COLUMN_NAME.CALLBACK_START_TIMESTAMP, COLUMN_NAME.CALLBACK_END_TIMESTAMP, COLUMN_NAME.IS_INTRA_PROCESS,
+                    COLUMN_NAME.CALLBACK_START_TIMESTAMP,
+                    COLUMN_NAME.CALLBACK_END_TIMESTAMP,
+                    COLUMN_NAME.IS_INTRA_PROCESS,
                 ]
             ).column_names,
             how='left',
