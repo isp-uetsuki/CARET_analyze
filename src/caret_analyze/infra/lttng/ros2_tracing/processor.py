@@ -826,6 +826,8 @@ class Ros2Handler():
         # Add to dict
         callback = get_field(event, 'callback')
         start_timestamp = get_field(event, 'start_timestamp')
+        if self._monotonic_to_system_offset is not None:  # should be always True
+            start_timestamp += self._monotonic_to_system_offset
         end_timestamp = get_field(event, '_timestamp')
         is_intra_process = get_field(event, 'is_intra_process')
         self.data.add_merged_callback_timing_instance(
