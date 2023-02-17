@@ -498,8 +498,9 @@ class Ros2Handler():
         callback = get_field(event, 'callback')
         timestamp = get_field(event, '_timestamp')
         is_intra_process = get_field(event, 'is_intra_process')
+        tid = get_field(event, '_vtid')
         self.data.add_callback_start_instance(
-            timestamp, callback, is_intra_process)
+            tid, timestamp, callback, is_intra_process)
 
     def _handle_callback_end(
         self,
